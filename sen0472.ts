@@ -18,13 +18,11 @@ namespace SEN0472 {
     // Registre I2C
     const REGISTRE = 0x00
 
-    // Compensation thermique activée par défaut
-    let compensationActive = true
-
     /**
-     * Calcul du checksum DFRobot
+     * Calcul du checksum
      */
     function checksum(data: number[]): number {
+
         let somme = 0
 
         for (let i = 1; i < 8; i++) {
@@ -35,7 +33,7 @@ namespace SEN0472 {
     }
 
     /**
-     * Construction d'une trame de 9 octets
+     * Construction d'une trame
      */
     function construireTrame(
         commande: number,
@@ -88,7 +86,7 @@ namespace SEN0472 {
     }
 
     /**
-     * Lecture de la réponse I2C
+     * Lecture de la réponse
      */
     function lireReponse(): Buffer {
 
@@ -109,7 +107,7 @@ namespace SEN0472 {
     }
 
     /**
-     * Vérification du checksum
+     * Vérification de la trame
      */
     function trameValide(data: Buffer): boolean {
 
@@ -143,7 +141,6 @@ namespace SEN0472 {
         )
 
         basic.pause(100)
-
     }
 
     /**
@@ -165,50 +162,10 @@ namespace SEN0472 {
     }
 
     /**
-     * LECTURE TEMPERATURE
-     */
-    //% block="SEN0472 température (°C)"
-    //% weight=85
-    export function temperature(): number {
-
-        envoyerCommande(CMD_TEMP)
-
-        basic.pause(100)
-
-        let data = lireReponse()
-
-        if (!trameValide(data) ||
-            data[1] != CMD_TEMP) {
-            return -999
-        }
-
-        let adc =
-            data[2] * 256 + data[3]
-
-        if (adc <= 0 || adc >= 1024) {
-            return -999
-        }
-
-        let tension = 3 * adc / 1024
-
-        let resistance =
-            tension * 10000 / (3 - tension)
-
-        let temp =
-            1 / (
-                1 / 298.15 +
-                1 / 3380.13 *
-                Math.log(resistance / 10000)
-            ) - 273.15
-
-        return Math.round(temp * 100) / 100
-    }
-
-    /**
      * LECTURE OZONE BRUT
      */
     //% block="SEN0472 lire O3 brut (ppm)"
-    //% weight=80
+    //% weight=90
     export function lireO3Brut(): number {
 
         envoyerCommande(CMD_GAS)
@@ -217,8 +174,11 @@ namespace SEN0472 {
 
         let data = lireReponse()
 
-        if (!trameValide(data) ||
-            data[1] != CMD_GAS ||
+        if (!trameValide(data)) {
+            return -1
+        }
+
+        if (data[1] != CMD_GAS ||
             data[4] != 0x2A) {
             return -1
         }
@@ -244,88 +204,58 @@ namespace SEN0472 {
     }
 
     /**
-     * COMPENSATION THERMIQUE DFRobot
+     * LECTURE OZONE
+     * Sans compensation artificielle
      */
-    function corrigerTemperature(
-        concentration: number,
-        temp: number
-    ): number {
-
-        let resultat = concentration
-
-        if (temp > -20 && temp <= 0) {
-
-            resultat =
-                concentration /
-                (0.015 * temp + 1.1) - 0.05
-
-        } else if (temp > 0 && temp <= 20) {
-
-            resultat =
-                concentration / 1.1 -
-                (0.01 * temp)
-
-        } else if (temp > 20 && temp <= 40) {
-
-            resultat =
-                concentration / 1.1 -
-                (-0.005 * temp + 0.3)
-
-        } else {
-
-            return -1
-        }
-
-        if (resultat < 0) {
-            resultat = 0
-        }
-
-        return Math.round(resultat * 100) / 100
-    }
-
-    /**
-     * LECTURE OZONE CORRIGEE
-     */
-    //% block="SEN0472 lire O3 corrigé (ppm)"
-    //% weight=90
+    //% block="SEN0472 lire O3 (ppm)"
+    //% weight=85
     export function lireO3(): number {
 
-        let temp = temperature()
-
-        if (temp == -999) {
-            return -1
-        }
-
-        let brut = lireO3Brut()
-
-        if (brut < 0) {
-            return -1
-        }
-
-        if (!compensationActive) {
-            return brut
-        }
-
-        return corrigerTemperature(
-            brut,
-            temp
-        )
+        return lireO3Brut()
     }
 
     /**
-     * ACTIVER / DESACTIVER COMPENSATION
+     * LECTURE TEMPERATURE
      */
-    //% block="SEN0472 compensation température active %active"
-    //% weight=75
-    export function activerCompensation(
-        active: boolean
-    ): void {
+    //% block="SEN0472 température (°C)"
+    //% weight=80
+    export function temperature(): number {
 
-        compensationActive = active
+        envoyerCommande(CMD_TEMP)
+
+        basic.pause(100)
+
+        let data = lireReponse()
+
+        if (!trameValide(data) ||
+            data[1] != CMD_TEMP) {
+            return -1
+        }
+
+        let adc =
+            data[2] * 256 + data[3]
+
+        let tension = 3 * adc / 1024
+
+        if (tension <= 0 || tension >= 3) {
+            return -1
+        }
+
+        let resistance =
+            tension * 10000 / (3 - tension)
+
+        let temp =
+            1 / (
+                1 / 298.15 +
+                1 / 3380.13 *
+                Math.log(resistance / 10000)
+            ) - 273.15
+
+        return Math.round(temp * 100) / 100
     }
 
     /**
-     * DIAGNOSTIC DONNEES BRUTES
+     * DIAGNOSTIC DES DONNEES
      */
     //% block="SEN0472 diagnostic données brutes"
     //% weight=70
