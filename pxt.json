@@ -1,10 +1,10 @@
+
 {
     "name": "sen0472",
     "description": "Extension capteur ozone SEN0472",
     "files": [
-        "main.ts",
-        "README.md",
-        "SEN0472.jpg"
+        "sen0472.ts",
+        "README.md"
     ],
     "dependencies": {
         "core": "*"
