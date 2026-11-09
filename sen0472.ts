@@ -15,7 +15,7 @@ namespace SEN0472 {
     // Mode passif
     const MODE_PASSIF = 0x04
 
-    // Registre I2C utilisé par DFRobot
+    // Registre I2C
     const REGISTRE = 0x00
 
     /**
@@ -58,8 +58,7 @@ namespace SEN0472 {
     }
 
     /**
-     * Envoie une commande en I2C
-     * Le registre 0 doit être envoyé avant la trame.
+     * Envoie une commande I2C
      */
     function envoyerCommande(
         commande: number,
@@ -88,7 +87,6 @@ namespace SEN0472 {
 
     /**
      * Lit la réponse du capteur
-     * Sélection du registre 0 puis lecture de 9 octets.
      */
     function lireReponse(): Buffer {
 
@@ -131,7 +129,7 @@ namespace SEN0472 {
     }
 
     /**
-     * Initialise le capteur en mode passif
+     * Initialise le capteur
      */
     //% block="SEN0472 initialiser"
     //% weight=100
@@ -144,12 +142,11 @@ namespace SEN0472 {
 
         basic.pause(100)
 
-        // Lecture de la réponse d'initialisation
         let reponse = lireReponse()
     }
 
     /**
-     * Vérifie si le capteur est connecté
+     * Vérifie la connexion
      */
     //% block="SEN0472 est connecté"
     //% weight=95
@@ -175,26 +172,22 @@ namespace SEN0472 {
 
         envoyerCommande(CMD_GAS)
 
-        basic.pause(10)
+        basic.pause(100)
 
         let data = lireReponse()
 
-        // Vérification de la réponse
         if (!trameValide(data)) {
             return -1
         }
 
-        // Vérification commande et type de gaz O3
         if (data[1] != CMD_GAS ||
             data[4] != 0x2A) {
             return -1
         }
 
-        // Concentration brute
         let valeur =
             data[2] * 256 + data[3]
 
-        // Nombre de décimales
         let decimales = data[5]
 
         if (decimales == 1) {
@@ -213,7 +206,31 @@ namespace SEN0472 {
     }
 
     /**
-     * Lit la température du capteur en °C
+     * DIAGNOSTIC : affiche les 9 octets reçus
+     * Les valeurs défilent sur la matrice LED.
+     */
+    //% block="SEN0472 diagnostic données brutes"
+    //% weight=85
+    export function diagnostic(): void {
+
+        envoyerCommande(CMD_GAS)
+
+        basic.pause(100)
+
+        let data = lireReponse()
+
+        for (let i = 0; i < 9; i++) {
+
+            basic.showNumber(data[i])
+
+            basic.pause(500)
+        }
+
+        basic.clearScreen()
+    }
+
+    /**
+     * Lit la température en °C
      */
     //% block="SEN0472 température (°C)"
     //% weight=80
@@ -221,7 +238,7 @@ namespace SEN0472 {
 
         envoyerCommande(CMD_TEMP)
 
-        basic.pause(10)
+        basic.pause(100)
 
         let data = lireReponse()
 
@@ -253,7 +270,7 @@ namespace SEN0472 {
     }
 
     /**
-     * Modifie l'adresse I2C utilisée
+     * Modifie l'adresse I2C
      */
     //% block="SEN0472 utiliser adresse I2C $adresse"
     //% adresse.min=1 adresse.max=127 adresse.defl=116
@@ -266,7 +283,7 @@ namespace SEN0472 {
     }
 
     /**
-     * Renvoie l'adresse I2C actuelle
+     * Renvoie l'adresse I2C
      */
     //% block="SEN0472 adresse I2C"
     //% weight=60
