@@ -4,25 +4,21 @@
 
 namespace SEN0472 {
 
-    // Adresse I2C du capteur
     let adresseI2C = 0x74
 
-    // Commandes du capteur
     const CMD_MODE = 0x78
     const CMD_GAZ = 0x86
     const CMD_TEMP = 0x87
 
-    // Mode passif
     const MODE_PASSIF = 0x04
-
-    // Registre
     const REGISTRE = 0x00
 
     let connecte = false
     let derniereTrame: Buffer = pins.createBuffer(9)
 
-    // Vérification de la communication I2C
+    // Lecture d'une trame I2C
     function lireTrame(commande: number): Buffer {
+
         let requete = pins.createBuffer(4)
 
         requete[0] = 0xFF
@@ -38,6 +34,7 @@ namespace SEN0472 {
 
     // Vérification de la trame
     function trameValide(data: Buffer): boolean {
+
         if (data.length < 9) {
             return false
         }
@@ -49,7 +46,7 @@ namespace SEN0472 {
         return true
     }
 
-    // Initialisation du capteur
+    // Initialisation
     //% block="initialiser SEN0472"
     export function initialiser(): void {
 
@@ -61,6 +58,7 @@ namespace SEN0472 {
         mode[3] = MODE_PASSIF
 
         pins.i2cWriteBuffer(adresseI2C, mode, false)
+
         basic.pause(300)
 
         let test = lireTrame(CMD_GAZ)
@@ -75,7 +73,9 @@ namespace SEN0472 {
     // Vérifier la connexion
     //% block="SEN0472 connecté"
     export function estConnecte(): boolean {
+
         let test = lireTrame(CMD_GAZ)
+
         connecte = trameValide(test)
 
         if (connecte) {
@@ -85,7 +85,7 @@ namespace SEN0472 {
         return connecte
     }
 
-    // Lire les octets bruts
+    // Lecture ozone brut
     //% block="SEN0472 lire O3 brut"
     export function lireO3Brut(): number {
 
@@ -100,7 +100,7 @@ namespace SEN0472 {
         return data[4] * 256 + data[5]
     }
 
-    // Lire la concentration d'ozone
+    // Lecture ozone en ppm
     //% block="SEN0472 lire O3"
     export function lireO3(): number {
 
@@ -113,7 +113,7 @@ namespace SEN0472 {
         return brut / 100
     }
 
-    // Lire la température
+    // Température
     //% block="SEN0472 température"
     export function temperature(): number {
 
@@ -137,13 +137,13 @@ namespace SEN0472 {
         }
     }
 
-    // Modifier l'adresse I2C
+    // Modifier adresse I2C
     //% block="SEN0472 utiliser adresse %adresse"
     export function utiliserAdresse(adresse: number): void {
         adresseI2C = adresse
     }
 
-    // Obtenir l'adresse I2C
+    // Lire adresse I2C
     //% block="SEN0472 adresse"
     export function adresse(): number {
         return adresseI2C
