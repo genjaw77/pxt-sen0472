@@ -1,12 +1,13 @@
 
 {
     "name": "sen0472",
-    "description": "Extension capteur ozone SEN0472",
-    "files": [
-        "sen0472.ts",
-        "README.md"
-    ],
+    "version": "0.0.2",
+    "description": "Extension capteur ozone DFRobot SEN0472",
     "dependencies": {
         "core": "*"
-    }
+    },
+    "files": [
+        "sen0472.ts"
+    ],
+    "preferredEditor": "tsprj"
 }
