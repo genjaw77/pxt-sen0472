@@ -4,7 +4,7 @@
     "files": [
         "main.ts",
         "README.md",
-        "icon.jpg"
+        "SEN0472.jpg"
     ],
     "dependencies": {
         "core": "*"
