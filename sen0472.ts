@@ -16,7 +16,7 @@ namespace SEN0472 {
     let connecte = false
     let derniereTrame: Buffer = pins.createBuffer(9)
 
-    // Lecture d'une trame I2C
+    // Lecture I2C
     function lireTrame(commande: number): Buffer {
 
         let requete = pins.createBuffer(4)
@@ -32,7 +32,7 @@ namespace SEN0472 {
         return pins.i2cReadBuffer(adresseI2C, 9, false)
     }
 
-    // Vérification de la trame
+    // Vérification trame
     function trameValide(data: Buffer): boolean {
 
         if (data.length < 9) {
@@ -70,7 +70,7 @@ namespace SEN0472 {
         }
     }
 
-    // Vérifier la connexion
+    // Connexion
     //% block="SEN0472 connecté"
     export function estConnecte(): boolean {
 
@@ -85,7 +85,7 @@ namespace SEN0472 {
         return connecte
     }
 
-    // Lecture ozone brut
+    // Ozone brut
     //% block="SEN0472 lire O3 brut"
     export function lireO3Brut(): number {
 
@@ -100,7 +100,7 @@ namespace SEN0472 {
         return data[4] * 256 + data[5]
     }
 
-    // Lecture ozone en ppm
+    // Ozone ppm
     //% block="SEN0472 lire O3"
     export function lireO3(): number {
 
@@ -126,7 +126,7 @@ namespace SEN0472 {
         return data[4] * 256 + data[5]
     }
 
-    // Diagnostic des 9 octets
+    // Diagnostic
     //% block="SEN0472 diagnostic"
     export function diagnostic(): void {
 
@@ -137,13 +137,13 @@ namespace SEN0472 {
         }
     }
 
-    // Modifier adresse I2C
+    // Adresse I2C
     //% block="SEN0472 utiliser adresse %adresse"
     export function utiliserAdresse(adresse: number): void {
         adresseI2C = adresse
     }
 
-    // Lire adresse I2C
+    // Lecture adresse
     //% block="SEN0472 adresse"
     export function adresse(): number {
         return adresseI2C
