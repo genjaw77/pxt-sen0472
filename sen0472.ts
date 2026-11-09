@@ -7,72 +7,38 @@ namespace SEN0472 {
     // Adresse I2C du capteur
     let adresseI2C = 0x74
 
-    // Commandes DFRobot
+    // Commandes du capteur
     const CMD_MODE = 0x78
-    const CMD_GAS = 0x86
+    const CMD_GAZ = 0x86
     const CMD_TEMP = 0x87
 
     // Mode passif
     const MODE_PASSIF = 0x04
+
+    // Registre
     const REGISTRE = 0x00
 
-    // Calcul du checksum
-    function checksum(data: number[]): number {
-        let somme = 0
-        for (let i = 1; i <= 7; i++) {
-            somme += data[i]
-        }
-        return ((~somme) + 1) & 0xFF
-    }
+    let connecte = false
+    let derniereTrame: Buffer = pins.createBuffer(9)
 
-    // Construction de la trame
-    function construireTrame(commande: number, parametre: number): number[] {
-        let data = [
-            0xFF,
-            0x01,
-            commande,
-            parametre,
-            0x00,
-            0x00,
-            0x00,
-            0x00,
-            0x00
-        ]
-        data[8] = checksum(data)
-        return data
-    }
+    // Vérification de la communication I2C
+    function lireTrame(commande: number): Buffer {
+        let requete = pins.createBuffer(4)
 
-    // Envoi d'une commande
-    function envoyerCommande(commande: number, parametre: number) {
-        let data = construireTrame(commande, parametre)
-        let buffer = pins.createBuffer(10)
-        buffer[0] = REGISTRE
+        requete[0] = 0xFF
+        requete[1] = commande
+        requete[2] = REGISTRE
+        requete[3] = 0x00
 
-        for (let i = 0; i < 9; i++) {
-            buffer[i + 1] = data[i]
-        }
+        pins.i2cWriteBuffer(adresseI2C, requete, false)
+        basic.pause(100)
 
-        pins.i2cWriteBuffer(adresseI2C, buffer, false)
-    }
-
-    // Lecture de la réponse
-    function lireReponse(): number[] {
-        pins.i2cWriteNumber(adresseI2C, REGISTRE, NumberFormat.UInt8BE, false)
-        basic.pause(10)
-
-        let buffer = pins.i2cReadBuffer(adresseI2C, 9, false)
-        let data: number[] = []
-
-        for (let i = 0; i < 9; i++) {
-            data.push(buffer[i])
-        }
-
-        return data
+        return pins.i2cReadBuffer(adresseI2C, 9, false)
     }
 
     // Vérification de la trame
-    function trameValide(data: number[]): boolean {
-        if (data.length != 9) {
+    function trameValide(data: Buffer): boolean {
+        if (data.length < 9) {
             return false
         }
 
@@ -80,92 +46,105 @@ namespace SEN0472 {
             return false
         }
 
-        return checksum(data) == data[8]
+        return true
     }
 
-    //% block="initialiser le capteur SEN0472"
-    export function initialiser() {
-        envoyerCommande(CMD_MODE, MODE_PASSIF)
-        basic.pause(100)
+    // Initialisation du capteur
+    //% block="initialiser SEN0472"
+    export function initialiser(): void {
+
+        let mode = pins.createBuffer(4)
+
+        mode[0] = 0xFF
+        mode[1] = CMD_MODE
+        mode[2] = REGISTRE
+        mode[3] = MODE_PASSIF
+
+        pins.i2cWriteBuffer(adresseI2C, mode, false)
+        basic.pause(300)
+
+        let test = lireTrame(CMD_GAZ)
+
+        connecte = trameValide(test)
+
+        if (connecte) {
+            derniereTrame = test
+        }
     }
 
-    //% block="capteur SEN0472 connecté"
+    // Vérifier la connexion
+    //% block="SEN0472 connecté"
     export function estConnecte(): boolean {
-        envoyerCommande(CMD_GAS, 0x00)
-        basic.pause(100)
+        let test = lireTrame(CMD_GAZ)
+        connecte = trameValide(test)
 
-        let data = lireReponse()
+        if (connecte) {
+            derniereTrame = test
+        }
 
-        return data[0] == 0xFF &&
-            data[1] == CMD_GAS &&
-            data[4] == 0x2A
+        return connecte
     }
 
-    //% block="lire ozone brut (ppm) SEN0472"
+    // Lire les octets bruts
+    //% block="SEN0472 lire O3 brut"
     export function lireO3Brut(): number {
-        envoyerCommande(CMD_GAS, 0x00)
-        basic.pause(100)
 
-        let data = lireReponse()
+        let data = lireTrame(CMD_GAZ)
 
         if (!trameValide(data)) {
             return -1
         }
 
-        let valeur = data[2] * 256 + data[3]
-        let decimal = data[5]
+        derniereTrame = data
 
-        if (decimal == 0) {
-            return valeur
-        } else if (decimal == 1) {
-            return valeur / 10
-        } else if (decimal == 2) {
-            return valeur / 100
-        }
-
-        return -1
+        return data[4] * 256 + data[5]
     }
 
-    //% block="lire ozone SEN0472"
+    // Lire la concentration d'ozone
+    //% block="SEN0472 lire O3"
     export function lireO3(): number {
-        return lireO3Brut()
+
+        let brut = lireO3Brut()
+
+        if (brut < 0) {
+            return -1
+        }
+
+        return brut / 100
     }
 
-    //% block="lire température SEN0472"
+    // Lire la température
+    //% block="SEN0472 température"
     export function temperature(): number {
-        envoyerCommande(CMD_TEMP, 0x00)
-        basic.pause(100)
 
-        let data = lireReponse()
+        let data = lireTrame(CMD_TEMP)
 
         if (!trameValide(data)) {
             return -1
         }
 
-        let valeur = data[2] * 256 + data[3]
-        return valeur / 100
+        return data[4] * 256 + data[5]
     }
 
-    //% block="diagnostic SEN0472"
-    export function diagnostic() {
-        envoyerCommande(CMD_GAS, 0x00)
-        basic.pause(100)
+    // Diagnostic des 9 octets
+    //% block="SEN0472 diagnostic"
+    export function diagnostic(): void {
 
-        let data = lireReponse()
+        let data = lireTrame(CMD_GAZ)
 
         for (let i = 0; i < 9; i++) {
-            basic.showString("D" + i)
-            basic.showNumber(data[i])
-            basic.pause(200)
+            serial.writeValue("OCTET " + i, data[i])
         }
     }
 
-    //% block="utiliser adresse I2C $adresse"
-    export function utiliserAdresse(adresse: number) {
+    // Modifier l'adresse I2C
+    //% block="SEN0472 utiliser adresse %adresse"
+    export function utiliserAdresse(adresse: number): void {
         adresseI2C = adresse
     }
 
-    //% block="adresse I2C SEN0472"
+    // Obtenir l'adresse I2C
+    //% block="SEN0472 adresse"
     export function adresse(): number {
         return adresseI2C
     }
